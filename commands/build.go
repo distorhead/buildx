@@ -137,7 +137,7 @@ func runBuild(dockerCli command.Cli, in buildOptions) (err error) {
 		Inputs: build.Inputs{
 			ContextPath:    in.contextPath,
 			DockerfilePath: in.dockerfileName,
-			InStream:       os.Stdin,
+			InStream:       getInStream(dockerCli),
 			NamedContexts:  contexts,
 		},
 		BuildArgs:     listToMap(in.buildArgs, true),
@@ -290,7 +290,7 @@ func runBuild(dockerCli command.Cli, in buildOptions) (err error) {
 		err = monitor.RunMonitor(ctx, cfg, func(ctx context.Context) (*build.ResultContext, error) {
 			_, rr, err := buildTargets(ctx, dockerCli, nodes, map[string]build.Options{defaultTargetName: opts}, in.progress, in.metadataFile, true)
 			return rr, err
-		}, io.NopCloser(os.Stdin), nopCloser{os.Stdout}, nopCloser{os.Stderr})
+		}, getInStream(dockerCli), nopCloser{os.Stdout}, nopCloser{os.Stderr})
 		if err != nil {
 			logrus.Warnf("failed to run monitor: %v", err)
 		}
@@ -743,4 +743,11 @@ func updateLastActivity(dockerCli command.Cli, ng *store.NodeGroup) error {
 	}
 	defer release()
 	return txn.UpdateLastActivity(ng)
+}
+
+func getInStream(dockerCli command.Cli) io.ReadCloser {
+	if dockerCli.In() != nil {
+		return dockerCli.In()
+	}
+	return os.Stdin
 }
